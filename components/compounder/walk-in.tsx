@@ -1,21 +1,15 @@
 "use client";
 
+import { safeAction } from "@/lib/safe-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus } from "lucide-react";
-import { bookWalkInToken, registerWalkInPatient, searchPatients } from "@/app/actions/workflow";
+import { bookWalkInToken, registerWalkInPatient, searchPatients, type PatientSearchHit } from "@/app/actions/workflow";
 import { useToast } from "@/components/toast";
 import { Button, Field, Input, Notice, Select, Spinner } from "@/components/ui";
 import { ageFrom } from "@/lib/format";
 
-interface PatientHit {
-  id: string;
-  full_name: string;
-  phone: string | null;
-  email: string | null;
-  date_of_birth: string | null;
-  gender: string | null;
-}
+type PatientHit = PatientSearchHit;
 
 export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: string; specialty: string }[] }) {
   const [query, setQuery] = useState("");
@@ -33,7 +27,7 @@ export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: s
   const search = () =>
     start(async () => {
       setError(null);
-      const res = await searchPatients(query);
+      const res = await safeAction(() => searchPatients(query));
       if (res.ok) setHits(res.data ?? []);
       else setError(res.error);
     });
@@ -41,7 +35,7 @@ export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: s
   const register = () =>
     start(async () => {
       setError(null);
-      const res = await registerWalkInPatient(reg);
+      const res = await safeAction(() => registerWalkInPatient(reg));
       if (res.ok && res.data) {
         toast(res.message ?? "Registered");
         setPatient(res.data);
@@ -54,7 +48,7 @@ export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: s
     start(async () => {
       if (!patient) return;
       setError(null);
-      const res = await bookWalkInToken(doctorId, patient.id, reason);
+      const res = await safeAction(() => bookWalkInToken(doctorId, patient.id, reason));
       if (res.ok) {
         toast(res.message ?? "Booked");
         setPatient(null);
@@ -76,12 +70,15 @@ export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: s
               search();
             }}
           >
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patient by name, phone or email" aria-label="Search patients" />
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, phone or exact email" aria-label="Search patients" />
             <Button type="submit" variant="secondary" disabled={pending || query.trim().length < 2}>
               {pending && !showRegister ? <Spinner /> : null}
               Search
             </Button>
           </form>
+          <p className="text-xs text-slate-500">
+            Name search covers patients who have visited this clinic. For anyone else, enter their exact email or full phone number.
+          </p>
           {hits ? (
             hits.length === 0 ? (
               <p className="text-sm text-slate-500">No matching patients. Register them below.</p>
@@ -94,7 +91,7 @@ export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: s
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-navy-900">{h.full_name}</p>
                         <p className="truncate text-xs text-slate-500">
-                          {[age != null ? `${age} y` : null, h.gender, h.phone, h.email?.endsWith("@walkin.medisync.local") ? "walk-in record" : h.email]
+                          {[age != null ? `${age} y` : null, h.gender, h.phone_masked ? `ph ${h.phone_masked}` : null, h.is_walk_in ? "walk-in record" : null, h.visited_clinic ? "visited before" : "new to clinic"]
                             .filter(Boolean)
                             .join(" · ")}
                         </p>

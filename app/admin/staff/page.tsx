@@ -19,7 +19,7 @@ export default async function StaffPage() {
 
   return (
     <>
-      <PageHeader title="Staff & users" description={`${patientCount ?? 0} registered patients on MediSync`} />
+      <PageHeader title="Staff & users" description={`${patientCount ?? 0} patients have visited this clinic`} />
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-6">
           <Card>

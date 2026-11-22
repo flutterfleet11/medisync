@@ -11,10 +11,13 @@ export function PlacesSearch({
   kind,
   defaultQuery,
   compact = false,
+  origin = null,
 }: {
   kind: PlaceKind;
   defaultQuery: string;
   compact?: boolean;
+  /** Default search origin (e.g. the prescribing clinic) until "Near me" is used. */
+  origin?: { lat: number; lng: number } | null;
 }) {
   const [query, setQuery] = useState(defaultQuery);
   const [result, setResult] = useState<PlacesResult | null>(null);
@@ -26,9 +29,13 @@ export function PlacesSearch({
   const run = (q = query, c = coords) => {
     setError(null);
     start(async () => {
-      const res = await searchPlacesAction(kind, q, c);
-      if (res.ok && res.data) setResult(res.data);
-      else if (!res.ok) setError(res.error);
+      try {
+        const res = await searchPlacesAction(kind, q, c ?? origin);
+        if (res.ok && res.data) setResult(res.data);
+        else if (!res.ok) setError(res.error);
+      } catch {
+        setError("Network error — please try again.");
+      }
     });
   };
 
@@ -118,12 +125,18 @@ export function PlacesSearch({
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <a href={p.directionsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700 hover:bg-teal-100">
-                      <Navigation className="h-3 w-3" /> Directions
-                    </a>
-                    <a href={p.mapsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
-                      <MapPin className="h-3 w-3" /> Map
-                    </a>
+                    {result.source === "live" ? (
+                      <>
+                        <a href={p.directionsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700 hover:bg-teal-100">
+                          <Navigation className="h-3 w-3" /> Directions
+                        </a>
+                        <a href={p.mapsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
+                          <MapPin className="h-3 w-3" /> Map
+                        </a>
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-400">Sample entry — no navigation</span>
+                    )}
                     {p.phone ? (
                       <a href={`tel:${p.phone}`} className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200">
                         <Phone className="h-3 w-3" /> {p.phone}

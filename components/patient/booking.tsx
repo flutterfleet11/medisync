@@ -1,5 +1,6 @@
 "use client";
 
+import { safeAction } from "@/lib/safe-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { bookToken, updateMyProfile } from "@/app/actions/workflow";
@@ -19,7 +20,7 @@ export function BookTokenForm({ doctorId, doctorName }: { doctorId: string; doct
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => {
-          const res = await bookToken(doctorId, reason);
+          const res = await safeAction(() => bookToken(doctorId, reason));
           if (res.ok && res.data) {
             toast(res.message ?? "Token booked");
             router.push(`/patient/tokens/${res.data.tokenId}`);
@@ -65,7 +66,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       onSubmit={(e) => {
         e.preventDefault();
         start(async () => {
-          const res = await updateMyProfile(form);
+          const res = await safeAction(() => updateMyProfile(form));
           if (res.ok) {
             toast(res.message ?? "Saved");
             router.refresh();

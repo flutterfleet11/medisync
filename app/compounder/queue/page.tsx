@@ -77,15 +77,7 @@ export default async function QueuePage() {
                               Back to waiting
                             </ActionButton>
                           ) : null}
-                          {t.status === "in_consultation" ? (
-                            <ActionButton
-                              action={setTokenStatus.bind(null, t.id, "completed")}
-                              variant="secondary"
-                              confirm="Mark as completed without a prescription from the doctor?"
-                            >
-                              Mark completed
-                            </ActionButton>
-                          ) : null}
+                          {t.status === "in_consultation" ? <span className="text-xs text-slate-500">With doctor</span> : null}
                           {t.status === "waiting" || t.status === "called" ? (
                             <ActionButton action={setTokenStatus.bind(null, t.id, "cancelled")} variant="ghost" confirm={`Cancel token #${t.token_number}?`}>
                               Cancel

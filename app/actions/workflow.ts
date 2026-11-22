@@ -4,10 +4,11 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { isUuid } from "@/lib/format";
+import { rateLimit } from "@/lib/integrations/rate-limit";
 import { notifyPrescriptionChange, notifyQueueChange } from "@/lib/realtime/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { ActionResult, AppRole, Medicine, Profile, Token, TokenStatus } from "@/lib/types";
+import type { ActionResult, AppRole, Medicine, Token, TokenStatus } from "@/lib/types";
 
 // Workflow mutations. Authorization is enforced twice: a role check here for
 // fast, friendly errors, and authoritative checks inside the SECURITY DEFINER
@@ -175,21 +176,30 @@ export async function completeConsultation(input: {
 }
 
 // ── Front desk (compounder / admin) ───────────────────────────────────
-export async function searchPatients(query: string): Promise<ActionResult<Pick<Profile, "id" | "full_name" | "phone" | "email" | "date_of_birth" | "gender">[]>> {
+export interface PatientSearchHit {
+  id: string;
+  full_name: string;
+  phone_masked: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  is_walk_in: boolean;
+  visited_clinic: boolean;
+}
+
+/**
+ * Front-desk lookup via the search_patients RPC: fuzzy name/phone search only
+ * among this clinic's patients; anyone else needs an exact email or full phone.
+ * Phone numbers come back masked.
+ */
+export async function searchPatients(query: string): Promise<ActionResult<PatientSearchHit[]>> {
   const g = await guard(["compounder", "admin"]);
   if ("ok" in g) return g;
-  const q = query.trim().replace(/[%,()]/g, " ").slice(0, 60);
+  const q = query.trim().slice(0, 80);
   if (q.length < 2) return { ok: true, data: [] };
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, phone, email, date_of_birth, gender")
-    .eq("role", "patient")
-    .or(`full_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
-    .order("full_name")
-    .limit(8);
+  const { data, error } = await supabase.rpc("search_patients", { p_query: q });
   if (error) return { ok: false, error: dbError(error) };
-  return { ok: true, data: (data ?? []) as Pick<Profile, "id" | "full_name" | "phone" | "email" | "date_of_birth" | "gender">[] };
+  return { ok: true, data: (data ?? []) as PatientSearchHit[] };
 }
 
 export async function bookWalkInToken(doctorId: string, patientId: string, reason: string): Promise<ActionResult> {
@@ -221,6 +231,8 @@ export async function registerWalkInPatient(input: {
 }): Promise<ActionResult<{ id: string; full_name: string }>> {
   const g = await guard(["compounder", "admin"]);
   if ("ok" in g) return g;
+  const rl = rateLimit(`walkin:${g.session.userId}`, 10, 10 * 60 * 1000);
+  if (!rl.ok) return { ok: false, error: `Too many registrations. Try again in ${rl.retryInSec}s.` };
   const fullName = input.full_name.trim().slice(0, 120);
   if (fullName.length < 2) return { ok: false, error: "Enter the patient's full name." };
   let admin;

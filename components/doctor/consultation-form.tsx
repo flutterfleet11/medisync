@@ -7,7 +7,7 @@ import { completeConsultation, type RxItemInput } from "@/app/actions/workflow";
 import { CopilotPanel } from "@/components/ai-answer";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Card, CardHeader, Field, Input, Notice, Select, Spinner, Textarea } from "@/components/ui";
-import { FREQUENCY_OPTIONS } from "@/lib/format";
+import { FREQUENCY_OPTIONS, suggestQuantity } from "@/lib/format";
 
 interface InventoryItem {
   name: string;
@@ -15,13 +15,15 @@ interface InventoryItem {
   unit: string;
 }
 
-const blankItem = (): RxItemInput => ({
+type DraftItem = RxItemInput & { qtyTouched?: boolean };
+
+const blankItem = (): DraftItem => ({
   medicine_name: "",
   dosage: "1 tablet",
   frequency: "BD",
   duration: "5 days",
   instructions: "",
-  quantity: 10,
+  quantity: suggestQuantity("BD", "5 days"),
 });
 
 export function ConsultationWorkspace({
@@ -39,7 +41,7 @@ export function ConsultationWorkspace({
   const [notes, setNotes] = useState("");
   const [advice, setAdvice] = useState("");
   const [followUp, setFollowUp] = useState("");
-  const [items, setItems] = useState<RxItemInput[]>([blankItem()]);
+  const [items, setItems] = useState<DraftItem[]>([blankItem()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -47,8 +49,17 @@ export function ConsultationWorkspace({
 
   const stockFor = (name: string) => inventory.find((m) => m.name.toLowerCase() === name.trim().toLowerCase());
 
+  // Quantity follows frequency × duration until the doctor edits it by hand.
   const update = (idx: number, patch: Partial<RxItemInput>) =>
-    setItems((list) => list.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+    setItems((list) =>
+      list.map((it, i) => {
+        if (i !== idx) return it;
+        const next: DraftItem = { ...it, ...patch };
+        if ("quantity" in patch) next.qtyTouched = true;
+        else if (("frequency" in patch || "duration" in patch) && !it.qtyTouched) next.quantity = suggestQuantity(next.frequency, next.duration);
+        return next;
+      }),
+    );
 
   const suggestions = useMemo(() => {
     const names = items.map((i) => i.medicine_name.trim()).filter(Boolean);
@@ -67,12 +78,17 @@ export function ConsultationWorkspace({
       return;
     }
     start(async () => {
-      const res = await completeConsultation({ tokenId, diagnosis, notes, advice, followUp, items });
-      if (res.ok) {
-        toast(res.message ?? "Saved");
-        router.push("/doctor");
-      } else {
-        setError(res.error);
+      try {
+        const res = await completeConsultation({ tokenId, diagnosis, notes, advice, followUp, items });
+        if (res.ok) {
+          toast(res.message ?? "Saved");
+          router.push("/doctor");
+        } else {
+          setError(res.error);
+        }
+      } catch {
+        // Keep the form intact so nothing the doctor typed is lost.
+        setError("Network error — your notes are still here. Please try saving again.");
       }
     });
   };

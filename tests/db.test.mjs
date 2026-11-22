@@ -23,6 +23,10 @@ await db.exec(`
   grant usage on schema auth to anon, authenticated, service_role;
   grant execute on function auth.uid() to anon, authenticated, service_role;
   create publication supabase_realtime;
+  -- Mirror Supabase's default privileges: anon/authenticated are granted everything; RLS must do the work.
+  alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+  alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+  grant usage on schema public to anon, authenticated, service_role;
 `);
 
 for (const f of fs.readdirSync(migDir).sort()) {
@@ -87,12 +91,23 @@ const t3 = (await as(U.comp, `select * from public.book_token($1,$2)`, [d1, U.p3
 ok(t3.token_number === 3 && t3.source === "walk_in", "compounder walk-in booking (#3)");
 ok(/cannot book/.test(await err(U.doc, `select * from public.book_token($1)`, [d1]) ?? ""), "doctor cannot book tokens");
 
+// H1: staff only see patients who visited their clinic
+ok((await as(U.comp, `select id from public.profiles where id=$1`, [U.newbie])).rows.length === 0, "compounder cannot read a patient who never visited the clinic");
+ok((await as(U.comp, `select id from public.profiles where id=$1`, [U.p3])).rows.length === 1, "compounder reads own-clinic patient");
+ok((await as(U.comp, `select * from public.search_patients('User newbie')`)).rows.length === 0, "search: no fuzzy match outside the clinic");
+const byEmail = (await as(U.comp, `select * from public.search_patients('newbie@test.dev')`)).rows;
+ok(byEmail.length === 1 && byEmail[0].visited_clinic === false, "search: exact email finds a new patient");
+const byName = (await as(U.comp, `select * from public.search_patients('User p3')`)).rows;
+ok(byName.length === 1 && /^•*\d{0,4}$/.test(byName[0].phone_masked ?? ""), `search: clinic patient by name with masked phone (${byName[0]?.phone_masked})`);
+ok(/front-desk/.test(await err(U.p1, `select * from public.search_patients('User')`) ?? ""), "patients cannot search patients");
+
 // Token visibility
 ok((await as(U.p1, `select * from public.tokens`)).rows.length === 1, "patient sees only own token");
 ok((await as(U.comp, `select * from public.tokens`)).rows.length === 3, "compounder sees clinic tokens");
 ok((await as(U.doc2, `select * from public.tokens`)).rows.length === 0, "other-clinic doctor sees no tokens");
-const anonTok = await err("anon", `select * from public.tokens`);
-ok(anonTok !== null || true, `anon tokens read blocked (${anonTok ?? "0 rows"})`);
+ok((await as("anon", `select * from public.tokens`)).rows.length === 0, "anon reads 0 tokens (RLS, despite default grants)");
+ok((await as("anon", `select * from public.profiles`)).rows.length === 0, "anon reads 0 profiles");
+ok(/sign in/.test(await err("anon", `select * from public.book_token($1)`, [d1]) ?? ""), "anon cannot book tokens");
 ok((await as("anon", `select * from public.queue_state`)).rows[0]?.last_token_number === 3, "queue_state public, counter = 3");
 
 // Queue position
@@ -114,8 +129,12 @@ ok(called.token_number === 1 && called.status === "called", "doctor calls next �
 ok((await db.query(`select now_serving from public.queue_state where doctor_id=$1`, [d1])).rows[0].now_serving === 1, "now_serving = 1");
 ok(/cancel a token/.test(await err(U.p1, `select * from public.update_token_status($1,'completed')`, [t1.id]) ?? ""), "patient cannot complete own token");
 
+ok(/already called/.test(await err(U.comp, `select * from public.call_next_token($1)`, [d1]) ?? ""), "cannot call next while a patient is already called");
+
 // Consultation
 const cid = (await as(U.doc, `select public.start_consultation($1) as id`, [t1.id])).rows[0].id;
+ok(/Finish the consultation/.test(await err(U.doc, `select public.start_consultation($1)`, [t2.id]) ?? ""), "doctor cannot run two consultations at once");
+ok(/Only the doctor/.test(await err(U.comp, `select * from public.update_token_status($1,'completed')`, [t1.id]) ?? ""), "front desk cannot complete a consultation in progress");
 ok(!!cid, "consultation started");
 ok(/Only the assigned doctor/.test(await err(U.doc2, `select public.start_consultation($1)`, [t2.id]) ?? ""), "other doctor cannot start consultation");
 const items = [
@@ -172,6 +191,8 @@ await as(U.p2, `select * from public.update_token_status($1,'cancelled')`, [t2.i
 ok((await db.query(`select waiting_count from public.queue_state where doctor_id=$1`, [d1])).rows[0].waiting_count === 1, "cancel updates waiting_count");
 const next = (await as(U.comp, `select * from public.call_next_token($1)`, [d1])).rows[0];
 ok(next.token_number === 3, "compounder calls next → #3 (skips cancelled #2)");
+ok(/already called/.test(await err(U.comp, `select * from public.call_next_token($1)`, [d1]) ?? ""), "second call-next blocked while #3 is called");
+await as(U.comp, `select * from public.update_token_status($1,'cancelled')`, [next.id]);
 const none = (await as(U.comp, `select * from public.call_next_token($1)`, [d1])).rows[0];
 ok(none.id === null, "call next on empty queue returns null row");
 

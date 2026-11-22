@@ -1,5 +1,6 @@
 "use client";
 
+import { safeAction } from "@/lib/safe-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
@@ -19,7 +20,7 @@ export function InventoryManager({ medicines }: { medicines: Medicine[] }) {
   const adjust = (m: Medicine, delta: number) => {
     setBusy(`${m.id}:${delta}`);
     start(async () => {
-      const res = await adjustStock(m.id, delta);
+      const res = await safeAction(() => adjustStock(m.id, delta));
       if (res.ok) toast(res.message ?? "Updated");
       else toast(res.error, "error");
       setBusy(null);
@@ -106,7 +107,7 @@ function AddMedicineCard() {
         onSubmit={(e) => {
           e.preventDefault();
           start(async () => {
-            const res = await addMedicine(form);
+            const res = await safeAction(() => addMedicine(form));
             if (res.ok) {
               toast(res.message ?? "Added");
               setForm(blank);

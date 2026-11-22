@@ -1,5 +1,6 @@
 "use client";
 
+import { safeAction } from "@/lib/safe-action";
 import { useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
 import { copilotAction, explainItemAction } from "@/app/actions/integrations";
@@ -70,7 +71,7 @@ export function MedicineExplainer({ itemId, medicineName }: { itemId: string; me
           onClick={() =>
             start(async () => {
               setError(null);
-              const res = await explainItemAction(itemId);
+              const res = await safeAction(() => explainItemAction(itemId));
               if (res.ok && res.data) setAnswer(res.data);
               else if (!res.ok) setError(res.error);
             })
@@ -97,7 +98,7 @@ export function CopilotPanel({ suggestions }: { suggestions: string[] }) {
     setQuestion(q);
     setError(null);
     start(async () => {
-      const res = await copilotAction(q);
+      const res = await safeAction(() => copilotAction(q));
       if (res.ok && res.data) setAnswer(res.data);
       else if (!res.ok) setError(res.error);
     });

@@ -79,8 +79,8 @@ export default async function DispensePage({ params }: PageProps<"/compounder/pr
           <div className="space-y-4 p-5">
             {unavailable.length ? (
               <Notice tone="warn">
-                {unavailable.length} medicine{unavailable.length === 1 ? " is" : "s are"} unavailable. Share a nearby pharmacy with the patient — the
-                patient also sees this list. Never substitute without the doctor&apos;s confirmation.
+                {unavailable.length} medicine{unavailable.length === 1 ? " is" : "s are"} unavailable. Suggest a nearby pharmacy to the patient (they
+                can run the same search from their prescription). Never substitute without the doctor&apos;s confirmation.
               </Notice>
             ) : null}
             <PlacesSearch kind="pharmacy" defaultQuery="pharmacy" compact />

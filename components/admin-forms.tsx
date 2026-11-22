@@ -1,19 +1,20 @@
 "use client";
 
+import { safeAction } from "@/lib/safe-action";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { assignStaff, updateClinicSettings, updateDoctor } from "@/app/actions/workflow";
 import { useToast } from "@/components/toast";
 import { Badge, Button, Field, Input, Select, Spinner, Textarea } from "@/components/ui";
-import type { AppRole, Clinic, Doctor } from "@/lib/types";
+import type { ActionResult, AppRole, Clinic, Doctor } from "@/lib/types";
 
 function useRun() {
   const [pending, start] = useTransition();
   const toast = useToast();
   const router = useRouter();
-  const run = (fn: () => Promise<{ ok: boolean; message?: string; error?: string }>, after?: () => void) =>
+  const run = (fn: () => Promise<ActionResult<unknown>>, after?: () => void) =>
     start(async () => {
-      const res = await fn();
+      const res = await safeAction(() => fn());
       if (res.ok) {
         toast(res.message ?? "Saved");
         after?.();

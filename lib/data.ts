@@ -18,7 +18,7 @@ import type {
 
 type PatientLite = Pick<Profile, "id" | "full_name" | "phone" | "date_of_birth" | "gender" | "allergies" | "blood_group">;
 type DoctorLite = Pick<Doctor, "id" | "display_name" | "specialty" | "room">;
-type ClinicLite = Pick<Clinic, "id" | "name" | "address" | "city" | "phone">;
+type ClinicLite = Pick<Clinic, "id" | "name" | "address" | "city" | "phone" | "latitude" | "longitude">;
 
 export type TokenWithPatient = Token & { patient: PatientLite | null };
 export type TokenWithDoctor = Token & { doctor: DoctorLite | null; clinic: ClinicLite | null };
@@ -35,7 +35,7 @@ export type RxDetail = RxSummary & {
 const PATIENT_COLS = "id, full_name, phone, date_of_birth, gender, allergies, blood_group";
 const RX_SELECT = `*,
   doctor:doctors(id, display_name, specialty, room),
-  clinic:clinics(id, name, address, city, phone),
+  clinic:clinics(id, name, address, city, phone, latitude, longitude),
   patient:profiles!prescriptions_patient_id_fkey(id, full_name),
   items:prescription_items(*)`;
 
@@ -116,7 +116,7 @@ export async function listPatientTokens(patientId: string, limit = 20): Promise<
   const supabase = await createClient();
   const { data } = await supabase
     .from("tokens")
-    .select("*, doctor:doctors(id, display_name, specialty, room), clinic:clinics(id, name, address, city, phone)")
+    .select("*, doctor:doctors(id, display_name, specialty, room), clinic:clinics(id, name, address, city, phone, latitude, longitude)")
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -127,7 +127,7 @@ export async function getTokenForPatient(tokenId: string): Promise<TokenWithDoct
   const supabase = await createClient();
   const { data } = await supabase
     .from("tokens")
-    .select("*, doctor:doctors(id, display_name, specialty, room), clinic:clinics(id, name, address, city, phone)")
+    .select("*, doctor:doctors(id, display_name, specialty, room), clinic:clinics(id, name, address, city, phone, latitude, longitude)")
     .eq("id", tokenId)
     .maybeSingle();
   return (data as TokenWithDoctor) ?? null;

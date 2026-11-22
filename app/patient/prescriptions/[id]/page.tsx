@@ -79,9 +79,15 @@ export default async function PatientPrescriptionPage({ params }: PageProps<"/pa
               />
               <div className="space-y-4 p-5">
                 <Notice tone="warn">
-                  Buy exactly what was prescribed. Never substitute a different medicine without asking your doctor or pharmacist.
+                  Pharmacies near {rx.clinic?.name ?? "your clinic"} (or use “Near me”). Call ahead to check stock, and buy exactly what was
+                  prescribed. Never substitute a different medicine without asking your doctor or pharmacist.
                 </Notice>
-                <PlacesSearch kind="pharmacy" defaultQuery="pharmacy" compact />
+                <PlacesSearch
+                  kind="pharmacy"
+                  defaultQuery="pharmacy"
+                  compact
+                  origin={rx.clinic?.latitude != null && rx.clinic.longitude != null ? { lat: rx.clinic.latitude, lng: rx.clinic.longitude } : null}
+                />
               </div>
             </Card>
           ) : null}

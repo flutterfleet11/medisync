@@ -5,7 +5,7 @@ import { RxStatusBadge, TokenStatusBadge } from "@/components/status";
 import { Card, CardHeader, EmptyState, LinkButton, PageHeader } from "@/components/ui";
 import { requireRole } from "@/lib/auth";
 import { getQueuePosition, listPatientTokens, listPrescriptions } from "@/lib/data";
-import { formatDate, waitLabel } from "@/lib/format";
+import { DEFAULT_TZ, formatDate, todayIn, waitLabel } from "@/lib/format";
 import { topics } from "@/lib/realtime/topics";
 
 export default async function PatientDashboard() {
@@ -14,7 +14,9 @@ export default async function PatientDashboard() {
     listPatientTokens(session.userId, 15),
     listPrescriptions({ patientId: session.userId, limit: 5 }),
   ]);
-  const active = tokens.filter((t) => ["waiting", "called", "in_consultation"].includes(t.status));
+  // Only today's tokens are "active"; stale ones from earlier days stay in history.
+  const today = todayIn(DEFAULT_TZ);
+  const active = tokens.filter((t) => t.token_date >= today && ["waiting", "called", "in_consultation"].includes(t.status));
   const positions = await Promise.all(active.map((t) => getQueuePosition(t.id)));
   const past = tokens.filter((t) => !active.includes(t)).slice(0, 6);
   const firstName = session.profile.full_name.split(" ")[0];

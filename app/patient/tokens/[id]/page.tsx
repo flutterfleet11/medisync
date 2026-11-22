@@ -45,12 +45,12 @@ export default async function TokenPage({ params }: PageProps<"/patient/tokens/[
             </div>
             <div className="px-3 py-4">
               <p className="text-xs text-slate-500">Ahead of you</p>
-              <p className="mt-1 text-2xl font-semibold text-navy-900 tabular-nums">{pos?.tokens_ahead ?? 0}</p>
+              <p className="mt-1 text-2xl font-semibold text-navy-900 tabular-nums">{pos ? pos.tokens_ahead : "—"}</p>
             </div>
             <div className="px-3 py-4">
               <p className="text-xs text-slate-500">Est. wait</p>
               <p className="mt-1 text-lg font-semibold text-navy-900">
-                {token.status === "waiting" ? waitLabel(pos?.est_wait_minutes ?? 0) : "—"}
+                {token.status === "waiting" && pos ? waitLabel(pos.est_wait_minutes) : "—"}
               </p>
             </div>
           </div>

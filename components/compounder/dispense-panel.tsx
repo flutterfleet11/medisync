@@ -34,9 +34,13 @@ export function DispensePanel({ prescriptionId, rows }: { prescriptionId: string
   const run = (key: string, fn: () => Promise<{ ok: boolean; message?: string; error?: string }>) => {
     setBusy(key);
     start(async () => {
-      const res = await fn();
-      if (res.ok) toast(res.message ?? "Updated");
-      else toast(res.error ?? "Failed", "error");
+      try {
+        const res = await fn();
+        if (res.ok) toast(res.message ?? "Updated");
+        else toast(res.error ?? "Failed", "error");
+      } catch {
+        toast("Network error — please try again.", "error");
+      }
       setBusy(null);
       router.refresh();
     });
@@ -105,11 +109,31 @@ export function DispensePanel({ prescriptionId, rows }: { prescriptionId: string
                       Mark available
                     </Button>
                   ) : null}
-                  <Button size="sm" variant="danger" disabled={pending} onClick={() => run(`u-${r.id}`, () => setItemAvailability(r.id, false))}>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    disabled={pending}
+                    onClick={() => {
+                      if (!window.confirm(`Mark ${r.medicine_name} as unavailable? The patient will be told to buy it outside.`)) return;
+                      run(`u-${r.id}`, () => setItemAvailability(r.id, false));
+                    }}
+                  >
                     {busy === `u-${r.id}` ? <Spinner /> : null}
                     Unavailable
                   </Button>
                 </div>
+              ) : null}
+              {r.status === "unavailable" ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={pending || !enough}
+                  title={enough ? "Restocked — make it dispensable again" : "Not enough stock yet"}
+                  onClick={() => run(`a-${r.id}`, () => setItemAvailability(r.id, true))}
+                >
+                  {busy === `a-${r.id}` ? <Spinner /> : null}
+                  Mark available again
+                </Button>
               ) : null}
             </li>
           );
