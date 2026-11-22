@@ -131,7 +131,7 @@ function MedicineRow({ medicine: m }: { medicine: Medicine }) {
   }
 
   return (
-    <li className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+    <li className="flex flex-col gap-3 px-5 py-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
           <Pill className="h-4 w-4" />
@@ -157,13 +157,15 @@ function MedicineRow({ medicine: m }: { medicine: Medicine }) {
               if (dirty && validCount) run("set", () => setStock(m.id, Number(count)));
             }}
           >
-            <Input
-              value={count}
-              onChange={(e) => setCount(e.target.value.replace(/[^\d]/g, ""))}
-              inputMode="numeric"
-              className={cn("h-8 w-20 text-center tabular-nums", !validCount && "border-red-400")}
-              aria-label={`Stock count for ${m.name}`}
-            />
+            <div className="w-24 shrink-0">
+              <Input
+                value={count}
+                onChange={(e) => setCount(e.target.value.replace(/[^\d]/g, ""))}
+                inputMode="numeric"
+                className={cn("h-8 text-center tabular-nums", !validCount && "border-red-400")}
+                aria-label={`Stock count for ${m.name}`}
+              />
+            </div>
             {dirty ? (
               <Button type="submit" size="sm" disabled={pending || !validCount}>
                 {busy === "set" ? <Spinner /> : null}
