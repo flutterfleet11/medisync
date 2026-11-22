@@ -41,6 +41,9 @@ export function LiveBadge() {
   } else if (mode === "supabase" && pgStatus === "down") {
     label = "Reconnecting… (auto-refresh every 30 s)";
     dot = "bg-amber-400";
+  } else if (mode === "connecting" && pgStatus === "live") {
+    label = "Live · Supabase (Nexconn connecting…)";
+    dot = "bg-emerald-500";
   } else if (mode === "supabase" && pgStatus === "idle") {
     label = "Realtime ready · Supabase (fallback)";
     dot = "bg-slate-400";

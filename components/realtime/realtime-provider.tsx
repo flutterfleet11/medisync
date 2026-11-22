@@ -212,7 +212,8 @@ export function RealtimeProvider({ children, nexconnEnabled }: { children: React
   );
   return (
     <RealtimeContext.Provider value={value}>
-      {mode !== "connecting" ? <SupabaseBridge topicKey={topicKey} emit={emit} emitAll={emitAll} onStatus={setPgStatus} /> : null}
+      {/* Supabase Realtime starts immediately (backup), even while Nexconn is connecting. */}
+      <SupabaseBridge topicKey={topicKey} emit={emit} emitAll={emitAll} onStatus={setPgStatus} />
       {children}
     </RealtimeContext.Provider>
   );
