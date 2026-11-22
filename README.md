@@ -22,9 +22,18 @@ MediSync replaces paper tokens and hand-carried prescriptions. Patients book a t
 | Role | What they can do |
 |---|---|
 | **Patient** | Register, search MediSync clinics and nearby clinics (SerpApi), book a token, watch the **live queue** (now serving, tokens ahead, estimated wait), cancel a token, view prescriptions with live dispensing status, download the **PDF**, get **You.com explanations** for each medicine, find **nearby pharmacies** for unavailable medicines, edit their profile and view their medical history |
-| **Doctor** | Manage today's live queue (call next, call, start, cancel), open a consultation with the patient's history and allergy warning, write a diagnosis and an inventory-aware prescription (shows stock per medicine), send it to the compounder in realtime, ask the **Doctor Copilot** (You.com, cited), browse patients |
-| **Compounder** (absorbs the receptionist role) | Use the realtime prescription inbox, check availability per medicine, dispense with **atomic stock deduction**, mark medicines unavailable, search nearby pharmacies, register walk-in patients, book walk-in tokens, control every doctor's queue, manage inventory |
-| **Admin** | View the operational dashboard (tokens, waiting, prescriptions, low stock, integration status), assign staff roles, edit or deactivate doctors, edit clinic settings (including average consult time, which feeds wait estimates), oversee inventory |
+| **Doctor** | Manage today's live queue (call next, call, start, cancel), open a consultation with the patient's history and allergy warning, write a diagnosis and an inventory-aware prescription (shows stock per medicine), send it to the compounder in realtime, ask the **Doctor Copilot** (You.com, cited), browse patients, add their own **degrees** and specialty, export their patient list |
+| **Compounder** (absorbs the receptionist role) | Use the realtime prescription inbox, check availability per medicine, dispense with **atomic stock deduction**, mark medicines unavailable, search nearby pharmacies, register walk-in patients, book walk-in tokens, control every doctor's queue, manage inventory (set the stock count directly, use the +/- buttons, edit or delete medicines, filter low or out-of-stock items), export inventory |
+| **Admin** | View the operational dashboard (tokens, waiting, prescriptions, low stock, integration status), assign staff roles, edit or deactivate doctors, edit clinic settings (including average consult time, which feeds wait estimates), browse the patient directory and each patient's history, oversee inventory, **export patients and inventory as Excel, CSV, PDF or JSON** |
+
+### Data export
+
+`/api/export/{inventory|patients}?format=xlsx|csv|pdf|json`
+
+- **Inventory:** compounders and admins can export it.
+- **Patients:** admins can export the whole clinic; doctors can export their own patients.
+- **Scope:** RLS limits every export to the user's own clinic.
+- **CSV safety:** CSV files are protected against spreadsheet formula injection.
 
 ## Architecture
 
