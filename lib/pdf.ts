@@ -80,7 +80,7 @@ export async function renderPrescriptionPdf({
   text(rx.doctor?.display_name ?? "", M, 11, bold);
   text(patient?.full_name ?? rx.patient?.full_name ?? "", W / 2, 11, bold);
   y -= 14;
-  text(rx.doctor?.specialty ?? "", M, 9, font, MUTED);
+  text([rx.doctor?.qualification, rx.doctor?.specialty].filter(Boolean).join("  |  "), M, 9, font, MUTED);
   text([age != null ? `${age} years` : null, patient?.gender, patient?.phone].filter(Boolean).join("  |  "), W / 2, 9, font, MUTED);
   y -= 14;
   text(`Date: ${formatDate(rx.consultation?.started_at ?? rx.created_at)}`, M, 9, font, MUTED);

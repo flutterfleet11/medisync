@@ -97,7 +97,10 @@ export default async function TokenPage({ params }: PageProps<"/patient/tokens/[
             <div>
               <dt className="text-slate-500">Doctor</dt>
               <dd className="font-medium text-navy-900">
-                {token.doctor?.display_name} <span className="font-normal text-slate-500">· {token.doctor?.specialty}</span>
+                {token.doctor?.display_name}{" "}
+                <span className="font-normal text-slate-500">
+                  · {[token.doctor?.qualification, token.doctor?.specialty].filter(Boolean).join(" · ")}
+                </span>
               </dd>
             </div>
             <div>

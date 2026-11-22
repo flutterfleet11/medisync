@@ -92,7 +92,19 @@ export function PageHeader({
   );
 }
 
-export function StatCard({ label, value, hint, tone = "blue" }: { label: string; value: ReactNode; hint?: string; tone?: "blue" | "teal" | "amber" | "slate" | "red" }) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  tone = "blue",
+  href,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  tone?: "blue" | "teal" | "amber" | "slate" | "red";
+  href?: string;
+}) {
   const bar: Record<string, string> = {
     blue: "bg-blue-600",
     teal: "bg-teal-600",
@@ -100,13 +112,35 @@ export function StatCard({ label, value, hint, tone = "blue" }: { label: string;
     slate: "bg-slate-400",
     red: "bg-red-500",
   };
-  return (
-    <Card className="relative overflow-hidden px-5 py-4">
+  const card = (
+    <Card className={cn("relative h-full overflow-hidden px-5 py-4", href && "transition-all group-hover:-translate-y-0.5 group-hover:border-blue-300 group-hover:shadow-sm")}>
       <span className={cn("absolute inset-y-0 left-0 w-1", bar[tone])} />
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-navy-900">{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
+      {href ? <span className="absolute top-4 right-4 text-xs text-slate-300 group-hover:text-blue-500">→</span> : null}
     </Card>
+  );
+  return href ? (
+    <Link href={href} className="group block">
+      {card}
+    </Link>
+  ) : (
+    card
+  );
+}
+
+/** Small medicine-name chips for prescription cards. */
+export function MedicineChips({ names, max = 4 }: { names: string[]; max?: number }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {names.slice(0, max).map((n, i) => (
+        <span key={`${n}-${i}`} className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 ring-1 ring-teal-100 ring-inset">
+          {n}
+        </span>
+      ))}
+      {names.length > max ? <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">+{names.length - max} more</span> : null}
+    </div>
   );
 }
 

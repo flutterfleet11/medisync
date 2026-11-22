@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { LiveRefresh } from "@/components/realtime/live-refresh";
 import { RxStatusBadge, TokenStatusBadge } from "@/components/status";
-import { Card, CardHeader, EmptyState, LinkButton, PageHeader } from "@/components/ui";
+import { Card, CardHeader, EmptyState, LinkButton, MedicineChips, PageHeader } from "@/components/ui";
 import { requireRole } from "@/lib/auth";
 import { getQueuePosition, listPatientTokens, listPrescriptions } from "@/lib/data";
 import { DEFAULT_TZ, formatDate, todayIn, waitLabel } from "@/lib/format";
@@ -88,16 +88,17 @@ export default async function PatientDashboard() {
             <ul className="divide-y divide-slate-100">
               {prescriptions.map((rx) => (
                 <li key={rx.id}>
-                  <Link href={`/patient/prescriptions/${rx.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-navy-900">
-                        {rx.items.map((i) => i.medicine_name).join(", ") || "Prescription"}
-                      </p>
+                  <Link href={`/patient/prescriptions/${rx.id}`} className="group flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+                    <div className="min-w-0 space-y-1.5">
                       <p className="text-xs text-slate-500">
-                        {rx.doctor?.display_name} · {formatDate(rx.created_at)}
+                        <span className="font-medium text-navy-900 group-hover:text-blue-700">{rx.doctor?.display_name}</span> · {formatDate(rx.created_at)}
                       </p>
+                      <MedicineChips names={rx.items.map((i) => i.medicine_name)} max={3} />
                     </div>
-                    <RxStatusBadge status={rx.status} />
+                    <div className="flex items-center gap-2">
+                      <RxStatusBadge status={rx.status} />
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-500" />
+                    </div>
                   </Link>
                 </li>
               ))}
@@ -112,16 +113,21 @@ export default async function PatientDashboard() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {past.map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-navy-900">
-                      #{t.token_number} · {t.doctor?.display_name}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {t.clinic?.name} · {formatDate(t.token_date)}
-                    </p>
-                  </div>
-                  <TokenStatusBadge status={t.status} />
+                <li key={t.id}>
+                  <Link href={`/patient/tokens/${t.id}`} className="group flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-navy-900 group-hover:text-blue-700">
+                        #{t.token_number} · {t.doctor?.display_name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {t.clinic?.name} · {formatDate(t.token_date)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <TokenStatusBadge status={t.status} />
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-500" />
+                    </div>
+                  </Link>
                 </li>
               ))}
             </ul>

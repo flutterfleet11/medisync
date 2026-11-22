@@ -115,8 +115,10 @@ export default async function PatientPrescriptionPage({ params }: PageProps<"/pa
             <div>
               <dt className="text-slate-500">Doctor</dt>
               <dd className="text-navy-900">
-                {rx.doctor?.display_name} · {rx.doctor?.specialty}
+                {rx.doctor?.display_name}
+                {rx.doctor?.qualification ? <span className="text-slate-500">, {rx.doctor.qualification}</span> : null}
               </dd>
+              <dd className="text-slate-500">{rx.doctor?.specialty}</dd>
             </div>
           </dl>
         </Card>

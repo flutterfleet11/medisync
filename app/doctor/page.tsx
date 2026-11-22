@@ -72,9 +72,13 @@ export default async function DoctorQueuePage() {
                   const age = ageFrom(t.patient?.date_of_birth);
                   return (
                     <tr key={t.id} className={t.status === "completed" || t.status === "cancelled" ? "text-slate-400" : ""}>
-                      <td className="px-5 py-3 font-semibold tabular-nums">#{t.token_number}</td>
+                      <td className="px-5 py-3 font-semibold tabular-nums">
+                        <Link href={`/doctor/consult/${t.id}`} className="hover:text-blue-700">
+                          #{t.token_number}
+                        </Link>
+                      </td>
                       <td className="px-5 py-3">
-                        <Link href={`/doctor/patients/${t.patient_id}`} className="font-medium text-navy-900 hover:text-blue-700">
+                        <Link href={`/doctor/consult/${t.id}`} className="font-medium text-navy-900 hover:text-blue-700 hover:underline">
                           {t.patient?.full_name ?? "Patient"}
                         </Link>
                         <p className="text-xs text-slate-500">

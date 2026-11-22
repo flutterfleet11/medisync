@@ -75,13 +75,13 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       }}
     >
       <Field label="Full name">
-        <Input value={form.full_name} onChange={set("full_name")} required minLength={2} />
+        <Input value={form.full_name} onChange={set("full_name")} required minLength={2} maxLength={120} />
       </Field>
       <Field label="Phone">
-        <Input value={form.phone} onChange={set("phone")} type="tel" />
+        <Input value={form.phone} onChange={set("phone")} type="tel" inputMode="tel" maxLength={20} pattern="\+?[0-9 \-\(\)]{7,20}" title="7–15 digits; may include +, spaces, - and brackets" />
       </Field>
       <Field label="Date of birth">
-        <Input value={form.date_of_birth} onChange={set("date_of_birth")} type="date" />
+        <Input value={form.date_of_birth} onChange={set("date_of_birth")} type="date" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} />
       </Field>
       <Field label="Gender">
         <Select value={form.gender} onChange={set("gender")}>

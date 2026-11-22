@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LiveRefresh } from "@/components/realtime/live-refresh";
 import { Badge, Card, CardHeader, EmptyState, LinkButton, PageHeader, StatCard } from "@/components/ui";
 import { requireStaff } from "@/lib/auth";
@@ -34,10 +35,10 @@ export default async function AdminOverview() {
       <PageHeader title={clinic.name} description={`Operational overview for ${today}`} />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Tokens today" value={tokens.length} hint={`${count("completed")} completed · ${count("cancelled")} cancelled`} tone="blue" />
-        <StatCard label="Waiting now" value={count("waiting") + count("called")} hint={`${count("in_consultation")} in consultation`} tone="amber" />
-        <StatCard label="Prescriptions today" value={rxToday.length} hint={`${openRx} open to dispense`} tone="teal" />
-        <StatCard label="Low / out of stock" value={lowStock.length} hint={`of ${meds.length} medicines`} tone={lowStock.length ? "red" : "slate"} />
+        <StatCard href="/admin/patients" label="Tokens today" value={tokens.length} hint={`${count("completed")} completed · ${count("cancelled")} cancelled`} tone="blue" />
+        <StatCard href="/admin/patients" label="Waiting now" value={count("waiting") + count("called")} hint={`${count("in_consultation")} in consultation`} tone="amber" />
+        <StatCard href="/admin/patients" label="Prescriptions today" value={rxToday.length} hint={`${openRx} open to dispense`} tone="teal" />
+        <StatCard href="/admin/inventory" label="Low / out of stock" value={lowStock.length} hint={`of ${meds.length} medicines`} tone={lowStock.length ? "red" : "slate"} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -50,10 +51,11 @@ export default async function AdminOverview() {
               {doctors.map((d) => {
                 const mine = tokens.filter((t) => t.doctor_id === d.id);
                 return (
-                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                  <li key={d.id}>
+                    <Link href="/admin/staff" className="group flex flex-wrap items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50">
                     <div>
-                      <p className="font-medium text-navy-900">{d.display_name}</p>
-                      <p className="text-xs text-slate-500">{d.specialty}</p>
+                      <p className="font-medium text-navy-900 group-hover:text-blue-700">{d.display_name}</p>
+                      <p className="text-xs text-slate-500">{[d.qualification, d.specialty].filter(Boolean).join(" · ")}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       {!d.is_active ? <Badge tone="slate">Inactive</Badge> : null}
@@ -61,6 +63,7 @@ export default async function AdminOverview() {
                       <Badge tone="amber">{states[d.id]?.waiting_count ?? 0} waiting</Badge>
                       <Badge tone="green">{mine.filter((t) => t.status === "completed").length} done</Badge>
                     </div>
+                    </Link>
                   </li>
                 );
               })}
@@ -76,11 +79,13 @@ export default async function AdminOverview() {
             ) : (
               <ul className="divide-y divide-slate-100">
                 {lowStock.slice(0, 8).map((m) => (
-                  <li key={m.id} className="flex items-center justify-between px-5 py-2.5 text-sm">
-                    <span className="text-navy-900">{m.name}</span>
-                    <Badge tone={m.stock_qty === 0 ? "red" : "amber"}>
-                      {m.stock_qty} {m.unit}
-                    </Badge>
+                  <li key={m.id}>
+                    <Link href="/admin/inventory" className="group flex items-center justify-between px-5 py-2.5 text-sm hover:bg-slate-50">
+                      <span className="text-navy-900 group-hover:text-blue-700">{m.name}</span>
+                      <Badge tone={m.stock_qty === 0 ? "red" : "amber"}>
+                        {m.stock_qty} {m.unit}
+                      </Badge>
+                    </Link>
                   </li>
                 ))}
               </ul>

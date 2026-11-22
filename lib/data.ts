@@ -17,7 +17,7 @@ import type {
 // decides what comes back — these helpers never widen access.
 
 type PatientLite = Pick<Profile, "id" | "full_name" | "phone" | "date_of_birth" | "gender" | "allergies" | "blood_group">;
-type DoctorLite = Pick<Doctor, "id" | "display_name" | "specialty" | "room">;
+type DoctorLite = Pick<Doctor, "id" | "display_name" | "specialty" | "room" | "qualification">;
 type ClinicLite = Pick<Clinic, "id" | "name" | "address" | "city" | "phone" | "latitude" | "longitude">;
 
 export type TokenWithPatient = Token & { patient: PatientLite | null };
@@ -34,7 +34,7 @@ export type RxDetail = RxSummary & {
 
 const PATIENT_COLS = "id, full_name, phone, date_of_birth, gender, allergies, blood_group";
 const RX_SELECT = `*,
-  doctor:doctors(id, display_name, specialty, room),
+  doctor:doctors(id, display_name, specialty, room, qualification),
   clinic:clinics(id, name, address, city, phone, latitude, longitude),
   patient:profiles!prescriptions_patient_id_fkey(id, full_name),
   items:prescription_items(*)`;
@@ -116,7 +116,7 @@ export async function listPatientTokens(patientId: string, limit = 20): Promise<
   const supabase = await createClient();
   const { data } = await supabase
     .from("tokens")
-    .select("*, doctor:doctors(id, display_name, specialty, room), clinic:clinics(id, name, address, city, phone, latitude, longitude)")
+    .select("*, doctor:doctors(id, display_name, specialty, room, qualification), clinic:clinics(id, name, address, city, phone, latitude, longitude)")
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -127,7 +127,7 @@ export async function getTokenForPatient(tokenId: string): Promise<TokenWithDoct
   const supabase = await createClient();
   const { data } = await supabase
     .from("tokens")
-    .select("*, doctor:doctors(id, display_name, specialty, room), clinic:clinics(id, name, address, city, phone, latitude, longitude)")
+    .select("*, doctor:doctors(id, display_name, specialty, room, qualification), clinic:clinics(id, name, address, city, phone, latitude, longitude)")
     .eq("id", tokenId)
     .maybeSingle();
   return (data as TokenWithDoctor) ?? null;
@@ -178,7 +178,7 @@ export async function getPatientHistory(patientId: string, limit = 10): Promise<
   const supabase = await createClient();
   const { data } = await supabase
     .from("consultations")
-    .select("*, doctor:doctors(id, display_name, specialty, room), prescriptions(*, items:prescription_items(*))")
+    .select("*, doctor:doctors(id, display_name, specialty, room, qualification), prescriptions(*, items:prescription_items(*))")
     .eq("patient_id", patientId)
     .not("completed_at", "is", null)
     .order("started_at", { ascending: false })
@@ -210,4 +210,49 @@ export async function getPrescriptionIdForToken(tokenId: string): Promise<string
   if (!c) return null;
   const { data: rx } = await supabase.from("prescriptions").select("id").eq("consultation_id", c.id).maybeSingle();
   return (rx?.id as string | undefined) ?? null;
+}
+
+export interface ClinicPatient {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  allergies: string | null;
+  blood_group: string | null;
+  visits: number;
+  last_visit: string;
+}
+
+/** Patients who have booked at the clinic (optionally only with one doctor), newest first. */
+export async function listClinicPatients(clinicId: string, doctorId?: string): Promise<ClinicPatient[]> {
+  const supabase = await createClient();
+  let q = supabase
+    .from("tokens")
+    .select(`patient_id, token_date, patient:profiles!tokens_patient_id_fkey(${PATIENT_COLS})`)
+    .eq("clinic_id", clinicId)
+    .order("token_date", { ascending: false })
+    .limit(2000);
+  if (doctorId) q = q.eq("doctor_id", doctorId);
+  const { data } = await q;
+  const map = new Map<string, ClinicPatient>();
+  for (const r of (data ?? []) as unknown as { patient_id: string; token_date: string; patient: PatientLite | null }[]) {
+    const prev = map.get(r.patient_id);
+    if (prev) {
+      prev.visits += 1;
+      continue;
+    }
+    map.set(r.patient_id, {
+      id: r.patient_id,
+      full_name: r.patient?.full_name ?? "",
+      phone: r.patient?.phone ?? null,
+      gender: r.patient?.gender ?? null,
+      date_of_birth: r.patient?.date_of_birth ?? null,
+      allergies: r.patient?.allergies ?? null,
+      blood_group: r.patient?.blood_group ?? null,
+      visits: 1,
+      last_visit: r.token_date,
+    });
+  }
+  return [...map.values()];
 }

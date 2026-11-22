@@ -133,17 +133,14 @@ export default async function Landing() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Clinics on MediSync</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             {clinics.slice(0, 4).map((c) => (
-              <Card key={c.id} className="p-5">
-                <p className="font-semibold text-navy-900">{c.name}</p>
-                <p className="mt-1 text-sm text-slate-500">{[c.address, c.city].filter(Boolean).join(", ")}</p>
-                {c.opening_hours ? <p className="mt-1 text-sm text-slate-500">{c.opening_hours}</p> : null}
-                <Link
-                  href={session?.profile.role === "patient" ? `/patient/clinics/${c.id}` : "/login"}
-                  className="mt-3 inline-block text-sm font-medium text-blue-700 hover:underline"
-                >
-                  Book a token →
-                </Link>
-              </Card>
+              <Link key={c.id} href={session?.profile.role === "patient" ? `/patient/clinics/${c.id}` : "/login"} className="group">
+                <Card className="h-full p-5 transition-all group-hover:-translate-y-0.5 group-hover:border-blue-300 group-hover:shadow-sm">
+                  <p className="font-semibold text-navy-900 group-hover:text-blue-700">{c.name}</p>
+                  <p className="mt-1 text-sm text-slate-500">{[c.address, c.city].filter(Boolean).join(", ")}</p>
+                  {c.opening_hours ? <p className="mt-1 text-sm text-slate-500">{c.opening_hours}</p> : null}
+                  <span className="mt-3 inline-block text-sm font-medium text-blue-700">Book a token →</span>
+                </Card>
+              </Link>
             ))}
           </div>
         </section>

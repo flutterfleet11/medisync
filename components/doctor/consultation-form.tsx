@@ -147,7 +147,7 @@ export function ConsultationWorkspace({
                     />
                   </Field>
                   <Field label="Dosage" className="sm:col-span-2">
-                    <Input value={item.dosage} onChange={(e) => update(idx, { dosage: e.target.value })} maxLength={60} />
+                    <Input value={item.dosage} onChange={(e) => update(idx, { dosage: e.target.value })} maxLength={60} required={Boolean(item.medicine_name.trim())} />
                   </Field>
                   <Field label="Qty">
                     <Input
@@ -168,7 +168,7 @@ export function ConsultationWorkspace({
                     </Select>
                   </Field>
                   <Field label="Duration" className="sm:col-span-2">
-                    <Input value={item.duration} onChange={(e) => update(idx, { duration: e.target.value })} maxLength={40} />
+                    <Input value={item.duration} onChange={(e) => update(idx, { duration: e.target.value })} maxLength={40} placeholder="e.g. 5 days" required={Boolean(item.medicine_name.trim())} />
                   </Field>
                   <div className="flex items-end sm:col-span-2">
                     <Button
@@ -216,7 +216,7 @@ export function ConsultationWorkspace({
               <Textarea value={advice} onChange={(e) => setAdvice(e.target.value)} placeholder="Rest, fluids, return if fever persists…" maxLength={1000} />
             </Field>
             <Field label="Follow-up date">
-              <Input type="date" value={followUp} onChange={(e) => setFollowUp(e.target.value)} />
+              <Input type="date" min={new Date().toISOString().slice(0, 10)} value={followUp} onChange={(e) => setFollowUp(e.target.value)} />
             </Field>
           </div>
         </Card>

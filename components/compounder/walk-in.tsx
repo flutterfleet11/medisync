@@ -118,10 +118,10 @@ export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: s
               }}
             >
               <Field label="Full name *">
-                <Input value={reg.full_name} onChange={(e) => setReg({ ...reg, full_name: e.target.value })} required minLength={2} />
+                <Input value={reg.full_name} onChange={(e) => setReg({ ...reg, full_name: e.target.value })} required minLength={2} maxLength={120} />
               </Field>
               <Field label="Phone">
-                <Input value={reg.phone} onChange={(e) => setReg({ ...reg, phone: e.target.value })} type="tel" />
+                <Input value={reg.phone} onChange={(e) => setReg({ ...reg, phone: e.target.value })} type="tel" inputMode="tel" maxLength={20} pattern="\+?[0-9 \-\(\)]{7,20}" title="7–15 digits; may include +, spaces, - and brackets" />
               </Field>
               <Field label="Gender">
                 <Select value={reg.gender} onChange={(e) => setReg({ ...reg, gender: e.target.value })}>
@@ -132,7 +132,7 @@ export function WalkInDesk({ doctors }: { doctors: { id: string; display_name: s
                 </Select>
               </Field>
               <Field label="Date of birth">
-                <Input type="date" value={reg.date_of_birth} onChange={(e) => setReg({ ...reg, date_of_birth: e.target.value })} />
+                <Input type="date" min="1900-01-01" max={new Date().toISOString().slice(0, 10)} value={reg.date_of_birth} onChange={(e) => setReg({ ...reg, date_of_birth: e.target.value })} />
               </Field>
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" disabled={pending}>

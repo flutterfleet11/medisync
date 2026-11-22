@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { LiveRefresh } from "@/components/realtime/live-refresh";
 import { RxStatusBadge } from "@/components/status";
-import { Card, CardHeader, EmptyState, LinkButton, PageHeader, StatCard } from "@/components/ui";
+import { Card, CardHeader, EmptyState, LinkButton, MedicineChips, PageHeader, StatCard } from "@/components/ui";
 import { requireStaff } from "@/lib/auth";
 import { getQueueStates, listDoctors, listPrescriptions, type RxSummary } from "@/lib/data";
 import { formatDateTime } from "@/lib/format";
@@ -19,18 +20,20 @@ function RxList({ list, empty }: { list: RxSummary[]; empty: string }) {
         const dispensed = rx.items.filter((i) => i.status === "dispensed").length;
         return (
           <li key={rx.id}>
-            <Link href={`/compounder/prescriptions/${rx.id}`} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 hover:bg-slate-50">
-              <div className="min-w-0">
-                <p className="font-medium text-navy-900">{rx.patient?.full_name ?? "Patient"}</p>
-                <p className="truncate text-sm text-slate-500">
+            <Link href={`/compounder/prescriptions/${rx.id}`} className="group flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50">
+              <div className="min-w-0 space-y-1.5">
+                <p className="font-semibold text-navy-900 group-hover:text-blue-700">{rx.patient?.full_name || "Patient"}</p>
+                <p className="text-xs text-slate-500">
                   {rx.items.length} medicine{rx.items.length === 1 ? "" : "s"} · {rx.doctor?.display_name} · {formatDateTime(rx.created_at)}
                 </p>
+                <MedicineChips names={rx.items.map((i) => i.medicine_name)} max={4} />
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-slate-500">
                   {dispensed}/{rx.items.length} dispensed{unavailable ? ` · ${unavailable} unavailable` : ""}
                 </span>
                 <RxStatusBadge status={rx.status} />
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-500" />
               </div>
             </Link>
           </li>
@@ -62,7 +65,7 @@ export default async function CompounderHome() {
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <StatCard label="New prescriptions" value={fresh} tone="blue" />
         <StatCard label="Open (to dispense)" value={open.length} tone="amber" />
-        <StatCard label="Patients waiting" value={waiting} tone="teal" hint="Across all doctors today" />
+        <StatCard label="Patients waiting" value={waiting} tone="teal" hint="Across all doctors today" href="/compounder/queue" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -83,14 +86,16 @@ export default async function CompounderHome() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {doctors.map((d) => (
-                <li key={d.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-navy-900">{d.display_name}</p>
-                    <p className="text-xs text-slate-500">{queue[d.id]?.waiting_count ?? 0} waiting</p>
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    Now <span className="font-semibold text-navy-900">#{queue[d.id]?.now_serving ?? "—"}</span>
-                  </p>
+                <li key={d.id}>
+                  <Link href="/compounder/queue" className="group flex items-center justify-between px-5 py-3 hover:bg-slate-50">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-navy-900 group-hover:text-blue-700">{d.display_name}</p>
+                      <p className="text-xs text-slate-500">{queue[d.id]?.waiting_count ?? 0} waiting</p>
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      Now <span className="font-semibold text-navy-900">#{queue[d.id]?.now_serving ?? "—"}</span>
+                    </p>
+                  </Link>
                 </li>
               ))}
             </ul>

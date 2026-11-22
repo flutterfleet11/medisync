@@ -28,6 +28,7 @@ const NAV: Record<AppRole, NavItem[]> = {
   ],
   admin: [
     { href: "/admin", label: "Overview", icon: "home" },
+    { href: "/admin/patients", label: "Patients", icon: "list" },
     { href: "/admin/staff", label: "Staff & users", icon: "users" },
     { href: "/admin/inventory", label: "Inventory", icon: "box" },
     { href: "/admin/settings", label: "Clinic settings", icon: "settings" },

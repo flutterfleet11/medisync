@@ -73,16 +73,16 @@ export function RegisterForm() {
   return (
     <form action={action} className="space-y-4">
       <Field label="Full name">
-        <Input name="full_name" autoComplete="name" required minLength={2} />
+        <Input name="full_name" autoComplete="name" required minLength={2} maxLength={120} />
       </Field>
       <Field label="Email">
         <Input name="email" type="email" autoComplete="email" required />
       </Field>
       <Field label="Phone" hint="Optional — shown to the clinic for your appointments">
-        <Input name="phone" type="tel" autoComplete="tel" />
+        <Input name="phone" autoComplete="tel" type="tel" inputMode="tel" maxLength={20} pattern="\+?[0-9 \-\(\)]{7,20}" title="7–15 digits; may include +, spaces, - and brackets" />
       </Field>
-      <Field label="Password" hint="At least 8 characters">
-        <Input name="password" type="password" autoComplete="new-password" required minLength={8} />
+      <Field label="Password" hint="At least 8 characters, with letters and numbers">
+        <Input name="password" type="password" autoComplete="new-password" required minLength={8} pattern="(?=.*[A-Za-z])(?=.*[0-9]).{8,}" title="At least 8 characters, including a letter and a number" />
       </Field>
       {state.error ? <Notice tone="error">{state.error}</Notice> : null}
       {state.info ? <Notice tone="success">{state.info}</Notice> : null}

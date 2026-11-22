@@ -5,6 +5,7 @@ import { ROLE_HOME } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { AppRole } from "@/lib/types";
+import { firstError, vEmail, vName, vPassword, vPhone } from "@/lib/validation";
 
 export interface AuthFormState {
   error?: string;
@@ -39,9 +40,8 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (fullName.length < 2) return { error: "Enter your full name." };
-  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "Enter a valid email address." };
-  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  const invalid = firstError(vName(fullName, "Full name"), vEmail(email), vPhone(phone), vPassword(password));
+  if (invalid) return { error: invalid };
 
   const supabase = await createClient();
   // Role is never taken from the client: the DB trigger always creates a patient profile.

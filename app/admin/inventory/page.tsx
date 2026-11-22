@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ExportMenu } from "@/components/export-menu";
 import { InventoryManager } from "@/components/inventory";
 import { PageHeader } from "@/components/ui";
 import { requireStaff } from "@/lib/auth";
@@ -11,7 +12,7 @@ export default async function AdminInventoryPage() {
   const medicines = await listMedicines(session.clinic.id);
   return (
     <>
-      <PageHeader title="Inventory oversight" description="Same live inventory the compounder dispenses from." />
+      <PageHeader title="Inventory oversight" description="Same live inventory the compounder dispenses from." action={<ExportMenu dataset="inventory" />} />
       <InventoryManager medicines={medicines} />
     </>
   );

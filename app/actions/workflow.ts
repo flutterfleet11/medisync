@@ -5,6 +5,20 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { isUuid } from "@/lib/format";
 import { rateLimit } from "@/lib/integrations/rate-limit";
+import { todayIn } from "@/lib/format";
+import {
+  BLOOD_GROUPS,
+  GENDERS,
+  LIMITS,
+  firstError,
+  vCoords,
+  vDob,
+  vFutureDate,
+  vInt,
+  vMaxLen,
+  vName,
+  vPhone,
+} from "@/lib/validation";
 import { notifyPrescriptionChange, notifyQueueChange } from "@/lib/realtime/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -39,6 +53,11 @@ export async function bookToken(doctorId: string, reason: string): Promise<Actio
   const g = await guard(["patient"]);
   if ("ok" in g) return g;
   if (!isUuid(doctorId)) return { ok: false, error: "Invalid doctor." };
+  if (g.session.profile.full_name.trim().length < 2) {
+    return { ok: false, error: "Add your name in Profile before booking, so the clinic knows who you are." };
+  }
+  const invalidReason = vMaxLen(reason, "Reason", 200);
+  if (invalidReason) return { ok: false, error: invalidReason };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("book_token", {
     p_doctor_id: doctorId,
@@ -61,21 +80,49 @@ export async function updateMyProfile(input: {
 }): Promise<ActionResult> {
   const g = await guard(["patient", "doctor", "compounder", "admin"]);
   if ("ok" in g) return g;
-  if (input.full_name.trim().length < 2) return { ok: false, error: "Name is too short." };
+  const invalid = firstError(
+    vName(input.full_name, "Full name"),
+    vPhone(input.phone),
+    vDob(input.date_of_birth),
+    input.gender && !GENDERS.includes(input.gender) ? "Select a valid gender." : null,
+    input.blood_group && !BLOOD_GROUPS.includes(input.blood_group) ? "Select a valid blood group." : null,
+    vMaxLen(input.allergies, "Allergies", LIMITS.text),
+  );
+  if (invalid) return { ok: false, error: invalid };
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
     .update({
-      full_name: input.full_name.trim().slice(0, 120),
-      phone: input.phone.trim().slice(0, 30) || null,
-      date_of_birth: /^\d{4}-\d{2}-\d{2}$/.test(input.date_of_birth) ? input.date_of_birth : null,
-      gender: input.gender.trim().slice(0, 20) || null,
-      blood_group: input.blood_group.trim().slice(0, 5) || null,
-      allergies: input.allergies.trim().slice(0, 500) || null,
+      full_name: input.full_name.trim().replace(/\s+/g, " "),
+      phone: input.phone.trim() || null,
+      date_of_birth: input.date_of_birth || null,
+      gender: input.gender || null,
+      blood_group: input.blood_group || null,
+      allergies: input.allergies.trim() || null,
     })
     .eq("id", g.session.userId);
   if (error) return { ok: false, error: dbError(error) };
+  revalidatePath("/", "layout");
   return { ok: true, message: "Profile saved" };
+}
+
+/** Doctors maintain their own degrees and specialty. */
+export async function updateMyDoctorDetails(input: { qualification: string; specialty: string }): Promise<ActionResult> {
+  const g = await guard(["doctor"]);
+  if ("ok" in g) return g;
+  const invalid = firstError(
+    vMaxLen(input.qualification, "Degrees", 200),
+    input.specialty.trim().length < 2 ? "Enter your specialty." : vMaxLen(input.specialty, "Specialty", 80),
+  );
+  if (invalid) return { ok: false, error: invalid };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_my_doctor_details", {
+    p_qualification: input.qualification.trim(),
+    p_specialty: input.specialty.trim(),
+  });
+  if (error) return { ok: false, error: dbError(error) };
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Professional details saved" };
 }
 
 // ── Queue (doctor / compounder / admin; patients may cancel their own) ─
@@ -142,7 +189,22 @@ export async function completeConsultation(input: {
   const g = await guard(["doctor"]);
   if ("ok" in g) return g;
   if (!isUuid(input.tokenId)) return { ok: false, error: "Invalid token." };
-  if (!input.diagnosis.trim()) return { ok: false, error: "Diagnosis is required." };
+  const named = input.items.filter((i) => i.medicine_name.trim());
+  const invalid = firstError(
+    input.diagnosis.trim().length < 2 ? "Diagnosis is required." : vMaxLen(input.diagnosis, "Diagnosis", 500),
+    vMaxLen(input.notes, "Clinical notes", LIMITS.longText),
+    vMaxLen(input.advice, "Advice", 1000),
+    vFutureDate(input.followUp, todayIn(g.session.clinic?.timezone)),
+    named.length > 25 ? "A prescription can have at most 25 medicines." : null,
+    ...named.map((i, n) =>
+      firstError(
+        !i.dosage.trim() ? `Medicine ${n + 1}: enter the dosage.` : null,
+        !i.duration.trim() ? `Medicine ${n + 1}: enter the duration.` : null,
+        vInt(i.quantity, `Medicine ${n + 1} quantity`, 1, LIMITS.qtyMax),
+      ),
+    ),
+  );
+  if (invalid) return { ok: false, error: invalid };
   const items = input.items
     .filter((i) => i.medicine_name.trim())
     .slice(0, 25)
@@ -233,8 +295,14 @@ export async function registerWalkInPatient(input: {
   if ("ok" in g) return g;
   const rl = rateLimit(`walkin:${g.session.userId}`, 10, 10 * 60 * 1000);
   if (!rl.ok) return { ok: false, error: `Too many registrations. Try again in ${rl.retryInSec}s.` };
-  const fullName = input.full_name.trim().slice(0, 120);
-  if (fullName.length < 2) return { ok: false, error: "Enter the patient's full name." };
+  const fullName = input.full_name.trim().replace(/\s+/g, " ");
+  const invalidWalkIn = firstError(
+    vName(fullName, "Patient name"),
+    vPhone(input.phone),
+    vDob(input.date_of_birth),
+    input.gender && !GENDERS.includes(input.gender) ? "Select a valid gender." : null,
+  );
+  if (invalidWalkIn) return { ok: false, error: invalidWalkIn };
   let admin;
   try {
     admin = createAdminClient();
@@ -302,7 +370,7 @@ export async function adjustStock(medicineId: string, delta: number): Promise<Ac
   return { ok: true, message: `${med.name}: ${med.stock_qty} ${med.unit} in stock` };
 }
 
-export async function addMedicine(input: {
+export interface MedicineInput {
   name: string;
   generic_name: string;
   form: string;
@@ -310,27 +378,101 @@ export async function addMedicine(input: {
   stock_qty: number;
   unit: string;
   reorder_level: number;
-}): Promise<ActionResult> {
+}
+
+function validateMedicine(input: MedicineInput): string | null {
+  return firstError(
+    input.name.trim().length < 2 ? "Enter the medicine name (as doctors will prescribe it)." : vMaxLen(input.name, "Name", 120),
+    vMaxLen(input.generic_name, "Generic name", 120),
+    vMaxLen(input.form, "Form", 40),
+    vMaxLen(input.strength, "Strength", 40),
+    input.unit.trim().length < 1 ? "Enter the unit (e.g. tablets)." : vMaxLen(input.unit, "Unit", 20),
+    vInt(input.stock_qty, "Stock", 0, LIMITS.stockMax),
+    vInt(input.reorder_level, "Reorder level", 0, LIMITS.stockMax),
+  );
+}
+
+function medicineRow(input: MedicineInput) {
+  return {
+    name: input.name.trim().replace(/\s+/g, " "),
+    generic_name: input.generic_name.trim() || null,
+    form: input.form.trim() || null,
+    strength: input.strength.trim() || null,
+    stock_qty: Number(input.stock_qty),
+    unit: input.unit.trim(),
+    reorder_level: Number(input.reorder_level),
+  };
+}
+
+function inventoryChanged() {
+  revalidatePath("/compounder/inventory");
+  revalidatePath("/admin/inventory");
+}
+
+export async function addMedicine(input: MedicineInput): Promise<ActionResult> {
   const g = await guard(["compounder", "admin"]);
   if ("ok" in g) return g;
   if (!g.session.clinic) return { ok: false, error: "Your account is not linked to a clinic." };
-  const name = input.name.trim().slice(0, 120);
-  if (name.length < 2) return { ok: false, error: "Enter the medicine name." };
+  const invalid = validateMedicine(input);
+  if (invalid) return { ok: false, error: invalid };
+  const row = medicineRow(input);
   const supabase = await createClient();
-  const { error } = await supabase.from("medicines").insert({
-    clinic_id: g.session.clinic.id,
-    name,
-    generic_name: input.generic_name.trim().slice(0, 120) || null,
-    form: input.form.trim().slice(0, 40) || null,
-    strength: input.strength.trim().slice(0, 40) || null,
-    stock_qty: Math.max(0, Math.round(Number(input.stock_qty) || 0)),
-    unit: input.unit.trim().slice(0, 20) || "units",
-    reorder_level: Math.max(0, Math.round(Number(input.reorder_level) || 0)),
-  });
+  const { error } = await supabase.from("medicines").insert({ clinic_id: g.session.clinic.id, ...row });
   if (error) return { ok: false, error: /duplicate/i.test(error.message) ? "That medicine is already in inventory." : dbError(error) };
-  revalidatePath("/compounder/inventory");
-  revalidatePath("/admin/inventory");
-  return { ok: true, message: `${name} added to inventory` };
+  inventoryChanged();
+  return { ok: true, message: `${row.name} added to inventory` };
+}
+
+/** Edit any medicine field, including setting the stock count directly. */
+export async function updateMedicine(medicineId: string, input: MedicineInput): Promise<ActionResult> {
+  const g = await guard(["compounder", "admin"]);
+  if ("ok" in g) return g;
+  if (!isUuid(medicineId)) return { ok: false, error: "Invalid medicine." };
+  const invalid = validateMedicine(input);
+  if (invalid) return { ok: false, error: invalid };
+  const row = medicineRow(input);
+  const supabase = await createClient();
+  // RLS limits this to compounders/admins of the medicine's own clinic.
+  const { data, error } = await supabase.from("medicines").update({ ...row, updated_at: new Date().toISOString() }).eq("id", medicineId).select("id");
+  if (error) return { ok: false, error: /duplicate/i.test(error.message) ? "Another medicine already has that name." : dbError(error) };
+  if (!data?.length) return { ok: false, error: "Medicine not found in your clinic." };
+  inventoryChanged();
+  return { ok: true, message: `${row.name} updated · ${row.stock_qty} ${row.unit} in stock` };
+}
+
+export async function setStock(medicineId: string, qty: number): Promise<ActionResult> {
+  const g = await guard(["compounder", "admin"]);
+  if ("ok" in g) return g;
+  if (!isUuid(medicineId)) return { ok: false, error: "Invalid medicine." };
+  const invalid = vInt(qty, "Stock", 0, LIMITS.stockMax);
+  if (invalid) return { ok: false, error: invalid };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("medicines")
+    .update({ stock_qty: Number(qty), updated_at: new Date().toISOString() })
+    .eq("id", medicineId)
+    .select("name, stock_qty, unit");
+  if (error) return { ok: false, error: dbError(error) };
+  const med = data?.[0] as Pick<Medicine, "name" | "stock_qty" | "unit"> | undefined;
+  if (!med) return { ok: false, error: "Medicine not found in your clinic." };
+  inventoryChanged();
+  return { ok: true, message: `${med.name}: stock set to ${med.stock_qty} ${med.unit}` };
+}
+
+/**
+ * Removes a medicine from inventory. Past prescriptions keep the medicine name
+ * (their link to inventory is cleared), so history is never lost.
+ */
+export async function deleteMedicine(medicineId: string): Promise<ActionResult> {
+  const g = await guard(["compounder", "admin"]);
+  if ("ok" in g) return g;
+  if (!isUuid(medicineId)) return { ok: false, error: "Invalid medicine." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("medicines").delete().eq("id", medicineId).select("name");
+  if (error) return { ok: false, error: dbError(error) };
+  if (!data?.length) return { ok: false, error: "Medicine not found in your clinic." };
+  inventoryChanged();
+  return { ok: true, message: `${data[0].name} removed from inventory` };
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────
@@ -348,12 +490,10 @@ export async function updateClinicSettings(input: {
   const g = await guard(["admin"]);
   if ("ok" in g) return g;
   if (!g.session.clinic) return { ok: false, error: "Your account is not linked to a clinic." };
-  if (input.name.trim().length < 2) return { ok: false, error: "Clinic name is required." };
+  const invalidClinic = validateClinic(input);
+  if (invalidClinic) return { ok: false, error: invalidClinic };
   const lat = input.latitude.trim() ? Number(input.latitude) : null;
   const lng = input.longitude.trim() ? Number(input.longitude) : null;
-  if ((lat !== null && (!Number.isFinite(lat) || Math.abs(lat) > 90)) || (lng !== null && (!Number.isFinite(lng) || Math.abs(lng) > 180))) {
-    return { ok: false, error: "Latitude/longitude are invalid." };
-  }
   const supabase = await createClient();
   const { error } = await supabase
     .from("clinics")
@@ -422,11 +562,10 @@ export async function createClinic(input: {
 }): Promise<ActionResult> {
   const g = await guard(["admin"]);
   if ("ok" in g) return g;
+  const invalidClinic = validateClinic(input);
+  if (invalidClinic) return { ok: false, error: invalidClinic };
   const lat = input.latitude.trim() ? Number(input.latitude) : null;
   const lng = input.longitude.trim() ? Number(input.longitude) : null;
-  if ((lat !== null && (!Number.isFinite(lat) || Math.abs(lat) > 90)) || (lng !== null && (!Number.isFinite(lng) || Math.abs(lng) > 180))) {
-    return { ok: false, error: "Latitude/longitude are invalid." };
-  }
   const supabase = await createClient();
   const { error } = await supabase.rpc("admin_create_clinic", {
     p_name: input.name.slice(0, 120),
@@ -442,4 +581,27 @@ export async function createClinic(input: {
   if (error) return { ok: false, error: dbError(error) };
   revalidatePath("/admin", "layout");
   return { ok: true, message: "Clinic created" };
+}
+
+function validateClinic(input: {
+  name: string;
+  description: string;
+  address: string;
+  city: string;
+  phone: string;
+  opening_hours: string;
+  avg_consult_minutes: number;
+  latitude: string;
+  longitude: string;
+}): string | null {
+  return firstError(
+    input.name.trim().length < 2 ? "Clinic name is required." : vMaxLen(input.name, "Clinic name", 120),
+    vMaxLen(input.description, "Description", 500),
+    vMaxLen(input.address, "Address", 200),
+    vMaxLen(input.city, "City", 80),
+    vPhone(input.phone),
+    vMaxLen(input.opening_hours, "Opening hours", 120),
+    vInt(input.avg_consult_minutes, "Average consultation time", 1, 120),
+    vCoords(input.latitude, input.longitude),
+  );
 }

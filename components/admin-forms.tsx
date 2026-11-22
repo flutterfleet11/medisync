@@ -48,7 +48,7 @@ export function ClinicSettingsForm({ clinic }: { clinic: Clinic }) {
       }}
     >
       <Field label="Clinic name" className="sm:col-span-2">
-        <Input value={f.name} onChange={set("name")} required minLength={2} />
+        <Input value={f.name} onChange={set("name")} required minLength={2} maxLength={120} />
       </Field>
       <Field label="Description" className="sm:col-span-2">
         <Textarea value={f.description} onChange={set("description")} maxLength={500} />
@@ -60,7 +60,7 @@ export function ClinicSettingsForm({ clinic }: { clinic: Clinic }) {
         <Input value={f.city} onChange={set("city")} />
       </Field>
       <Field label="Phone">
-        <Input value={f.phone} onChange={set("phone")} />
+        <Input value={f.phone} onChange={set("phone")} type="tel" inputMode="tel" maxLength={20} pattern="\+?[0-9 \-\(\)]{7,20}" title="7–15 digits; may include +, spaces, - and brackets" />
       </Field>
       <Field label="Opening hours">
         <Input value={f.opening_hours} onChange={set("opening_hours")} placeholder="Mon–Sat · 9 AM – 8 PM" />
@@ -70,10 +70,10 @@ export function ClinicSettingsForm({ clinic }: { clinic: Clinic }) {
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Latitude" hint="Origin for pharmacy search">
-          <Input value={f.latitude} onChange={set("latitude")} inputMode="decimal" />
+          <Input value={f.latitude} onChange={set("latitude")} type="number" step="any" min={-90} max={90} />
         </Field>
         <Field label="Longitude">
-          <Input value={f.longitude} onChange={set("longitude")} inputMode="decimal" />
+          <Input value={f.longitude} onChange={set("longitude")} type="number" step="any" min={-180} max={180} />
         </Field>
       </div>
       <div className="sm:col-span-2">

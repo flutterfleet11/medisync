@@ -23,7 +23,7 @@ export default async function PatientProfilePage() {
         </Card>
         <Card>
           <CardHeader title="Medical history" description="Completed consultations across MediSync clinics." />
-          <PatientHistoryList history={history} />
+          <PatientHistoryList history={history} rxHrefBase="/patient/prescriptions" />
         </Card>
       </div>
     </>

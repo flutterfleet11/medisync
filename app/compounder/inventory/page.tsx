@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ExportMenu } from "@/components/export-menu";
 import { InventoryManager } from "@/components/inventory";
 import { PageHeader } from "@/components/ui";
 import { requireStaff } from "@/lib/auth";
@@ -11,7 +12,7 @@ export default async function CompounderInventoryPage() {
   const medicines = await listMedicines(session.clinic.id);
   return (
     <>
-      <PageHeader title="Inventory" description="Prescriptions are matched to these names. Dispensing deducts stock automatically." />
+      <PageHeader title="Inventory" description="Prescriptions are matched to these names. Dispensing deducts stock automatically." action={<ExportMenu dataset="inventory" />} />
       <InventoryManager medicines={medicines} />
     </>
   );

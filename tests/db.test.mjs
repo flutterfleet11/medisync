@@ -217,5 +217,19 @@ ok((await db.query(`select d.clinic_id, d.display_name from public.doctors d whe
 await as(U.p2, `update public.profiles set full_name='Meera Joshi' where id=$1`, [U.p2]);
 ok((await db.query(`select display_name from public.doctors where profile_id=$1`, [U.p2])).rows[0].display_name === "Dr. Meera Joshi", "doctor display name follows profile name");
 
+// Doctor self-service: degrees + specialty, own record only
+await as(U.doc, `select * from public.update_my_doctor_details('MBBS, MD (Medicine)', 'General Physician')`);
+ok((await db.query(`select qualification from public.doctors where id=$1`, [d1])).rows[0].qualification === "MBBS, MD (Medicine)", "doctor updates own degrees");
+ok(/not set up as a doctor/.test(await err(U.comp, `select * from public.update_my_doctor_details('X', 'Y Z')`) ?? ""), "non-doctor cannot use doctor self-service");
+ok(/Specialty/.test(await err(U.doc, `select * from public.update_my_doctor_details('MBBS', '')`) ?? ""), "specialty required");
+ok((await as(U.doc, `update public.doctors set qualification='hack' where id=$1 returning id`, [d2])).rows.length === 0, "doctor cannot edit another doctor directly");
+
+// Inventory delete keeps prescription history (FK set null)
+const medForDelete = (await db.query(`select id from public.medicines where name='Paracetamol 500mg'`)).rows[0].id;
+await as(U.comp, `delete from public.medicines where id=$1`, [medForDelete]);
+const orphan = (await db.query(`select medicine_name, medicine_id from public.prescription_items where medicine_name ilike 'paracetamol%' limit 1`)).rows[0];
+ok(orphan && orphan.medicine_id === null && /paracetamol/i.test(orphan.medicine_name), "deleting a medicine keeps prescription items (name kept, link cleared)");
+ok((await as(U.p1, `delete from public.medicines where clinic_id=$1 returning id`, [clinic])).rows.length === 0, "patient cannot delete medicines");
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL CHECKS PASSED");
 process.exit(failures ? 1 : 0);
