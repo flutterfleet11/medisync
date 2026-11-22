@@ -109,25 +109,33 @@ npm run dev                       # http://localhost:3000
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` / `npm run typecheck` | ESLint and TypeScript |
 | `npm run test:db` | Applies the migrations to in-process Postgres and runs 72 RLS and workflow checks |
-| `npm run seed` | Resets the demo data (synthetic only) |
+| `npm run reset` | Wipes all data and creates only the 4 blank logins |
+| `npm run seed` | Optional: loads a pre-filled synthetic sample dataset |
 | `npm run db:push -- "<db-url>"` | Applies the migrations to a Supabase project |
 
-## Demo accounts
+## Logins and first-run setup
 
-All demo accounts use the password **`MediSync@2026`**. The login page has one-click buttons for each role.
+The database starts **empty**. `npm run reset` wipes all data and creates only these blank logins. The password for all of them is **`MediSync@2026`** (override it with `RESET_PASSWORD`):
 
-| Role | Email | Notes |
-|---|---|---|
-| Patient | `patient@medisync.demo` | Aisha Khan. Penicillin allergy, has a past visit |
-| Doctor | `doctor@medisync.demo` | Dr. Ananya Rao, CityCare. Today's queue: #1 done, #2 waiting |
-| Compounder | `compounder@medisync.demo` | Ravi Kumar, CityCare |
-| Admin | `admin@medisync.demo` | Meera Iyer, CityCare |
+| Role | Email |
+|---|---|
+| Admin | `admin@medisync.demo` |
+| Doctor | `doctor@medisync.demo` |
+| Compounder | `compounder@medisync.demo` |
+| Patient | `patient@medisync.demo` |
 
-There are also `doctor2`, `doctor3`, `compounder2` and `patient2` through `patient4` (all `@medisync.demo`). Azithromycin 500mg and Vitamin D3 are **out of stock on purpose**, so the demo can show the unavailable-medicine path.
+**First run:**
+1. **Admin:** Sign in. You'll see the **Create your clinic** screen. Fill it in, then open **My profile** and add your name.
+2. **Admin → Staff & users:** Assign `doctor@medisync.demo` as **Doctor** (with a specialty) and `compounder@medisync.demo` as **Compounder**.
+3. **Doctor and compounder:** Sign in and fill in **My profile**. A doctor's name shows to patients as "Dr. …".
+4. **Compounder → Inventory:** Add medicines.
+5. **Patient:** Sign in (or register a new account), fill in the profile, find the clinic and book a token.
+
+`npm run seed` is still available if you want a pre-filled sample dataset instead.
 
 ## Hackathon demo script (about 5 minutes)
 
-Open three windows (patient on a phone-sized window, doctor, compounder) and run `npm run seed` first.
+Open three windows (patient on a phone-sized window, doctor, compounder). This script assumes the sample data from `npm run seed`; after `npm run reset`, set up the clinic first, as described under Logins and first-run setup.
 
 1. **Patient:** Go to Find a clinic → **CityCare Family Clinic** → Dr. Ananya Rao → **Book token**. The token page shows **#3, 1 ahead, about 8 min**.
 2. **Doctor:** The token appears in the queue live. Click **Call next patient**. The patient's "Now serving" changes **without a refresh**.

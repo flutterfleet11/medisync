@@ -407,3 +407,39 @@ export async function updateDoctor(doctorId: string, input: { specialty: string;
   revalidatePath("/admin/staff");
   return { ok: true, message: input.is_active ? "Doctor updated" : "Doctor deactivated (no new tokens)" };
 }
+
+/** First-run setup: an admin with no clinic creates one and is linked to it. */
+export async function createClinic(input: {
+  name: string;
+  description: string;
+  address: string;
+  city: string;
+  phone: string;
+  opening_hours: string;
+  avg_consult_minutes: number;
+  latitude: string;
+  longitude: string;
+}): Promise<ActionResult> {
+  const g = await guard(["admin"]);
+  if ("ok" in g) return g;
+  const lat = input.latitude.trim() ? Number(input.latitude) : null;
+  const lng = input.longitude.trim() ? Number(input.longitude) : null;
+  if ((lat !== null && (!Number.isFinite(lat) || Math.abs(lat) > 90)) || (lng !== null && (!Number.isFinite(lng) || Math.abs(lng) > 180))) {
+    return { ok: false, error: "Latitude/longitude are invalid." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_create_clinic", {
+    p_name: input.name.slice(0, 120),
+    p_address: input.address.slice(0, 200),
+    p_city: input.city.slice(0, 80),
+    p_phone: input.phone.slice(0, 30),
+    p_opening_hours: input.opening_hours.slice(0, 120),
+    p_avg_consult_minutes: Math.round(Number(input.avg_consult_minutes) || 10),
+    p_latitude: lat,
+    p_longitude: lng,
+    p_description: input.description.slice(0, 500),
+  });
+  if (error) return { ok: false, error: dbError(error) };
+  revalidatePath("/admin", "layout");
+  return { ok: true, message: "Clinic created" };
+}

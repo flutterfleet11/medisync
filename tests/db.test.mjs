@@ -48,13 +48,14 @@ const U = {
   comp: "00000000-0000-0000-0000-0000000000c1",
   admin: "00000000-0000-0000-0000-0000000000a1",
   newbie: "00000000-0000-0000-0000-0000000000e1",
+  admin2: "00000000-0000-0000-0000-0000000000a2",
 };
 for (const [k, id] of Object.entries(U)) {
   await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [
     id, `${k}@test.dev`, { full_name: `User ${k}`, phone: "555" },
   ]);
 }
-ok((await db.query(`select count(*)::int c from public.profiles where role='patient'`)).rows[0].c === 8, "signup trigger creates patient profiles");
+ok((await db.query(`select count(*)::int c from public.profiles where role='patient'`)).rows[0].c === Object.keys(U).length, "signup trigger creates patient profiles");
 
 const clinic = (await db.query(`insert into public.clinics (name, city) values ('C1','X') returning id`)).rows[0].id;
 const clinic2 = (await db.query(`insert into public.clinics (name, city) values ('C2','Y') returning id`)).rows[0].id;
@@ -203,6 +204,18 @@ const nd = (await db.query(`select p.role, p.clinic_id, d.specialty from public.
 ok(nd?.role === "doctor" && nd.clinic_id === clinic && nd.specialty === "Pediatrics", "admin assigns doctor role + doctor row");
 ok(/another clinic/.test(await err(U.admin, `select public.admin_assign_staff('doc2@test.dev','compounder')`) ?? ""), "admin cannot poach other clinic staff");
 ok((await as(U.admin, `update public.clinics set name='C1b' returning id`)).rows.length === 1, "admin updates own clinic only");
+
+// Start-from-zero: admin without a clinic creates one, then assigns staff
+await db.query(`update public.profiles set role='admin' where id=$1`, [U.admin2]);
+ok(/already manages/.test(await err(U.admin, `select public.admin_create_clinic('X')`) ?? ""), "admin with a clinic cannot create another");
+ok(/Only admins/.test(await err(U.p1, `select public.admin_create_clinic('X')`) ?? ""), "patient cannot create a clinic");
+const newClinic = (await as(U.admin2, `select public.admin_create_clinic('Fresh Clinic', 'Addr', 'City') as id`)).rows[0].id;
+ok((await db.query(`select clinic_id from public.profiles where id=$1`, [U.admin2])).rows[0].clinic_id === newClinic, "new admin linked to created clinic");
+await db.query(`update public.profiles set role='doctor', clinic_id=null where id=$1`, [U.p2]);
+await as(U.admin2, `select public.admin_assign_staff('p2@test.dev','doctor','ENT')`);
+ok((await db.query(`select d.clinic_id, d.display_name from public.doctors d where profile_id=$1`, [U.p2])).rows[0]?.clinic_id === newClinic, "unassigned doctor account can be assigned");
+await as(U.p2, `update public.profiles set full_name='Meera Joshi' where id=$1`, [U.p2]);
+ok((await db.query(`select display_name from public.doctors where profile_id=$1`, [U.p2])).rows[0].display_name === "Dr. Meera Joshi", "doctor display name follows profile name");
 
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL CHECKS PASSED");
 process.exit(failures ? 1 : 0);

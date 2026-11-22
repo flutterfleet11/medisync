@@ -18,17 +18,20 @@ const NAV: Record<AppRole, NavItem[]> = {
     { href: "/doctor", label: "Today's queue", icon: "queue" },
     { href: "/doctor/patients", label: "Patients", icon: "users" },
     { href: "/doctor/copilot", label: "Copilot", icon: "spark" },
+    { href: "/doctor/profile", label: "My profile", icon: "user" },
   ],
   compounder: [
     { href: "/compounder", label: "Prescriptions", icon: "rx" },
     { href: "/compounder/queue", label: "Queue & walk-ins", icon: "queue" },
     { href: "/compounder/inventory", label: "Inventory", icon: "box" },
+    { href: "/compounder/profile", label: "My profile", icon: "user" },
   ],
   admin: [
     { href: "/admin", label: "Overview", icon: "home" },
     { href: "/admin/staff", label: "Staff & users", icon: "users" },
     { href: "/admin/inventory", label: "Inventory", icon: "box" },
     { href: "/admin/settings", label: "Clinic settings", icon: "settings" },
+    { href: "/admin/profile", label: "My profile", icon: "user" },
   ],
 };
 

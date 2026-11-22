@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
     "db:push": "npx -y supabase@latest db push --include-all --db-url",
-    "test:db": "node tests/db.test.mjs"
+    "test:db": "node tests/db.test.mjs",
+    "reset": "node --env-file=.env.local scripts/reset.mjs"
   },
   "dependencies": {
     "@nexconn/chat": "^26.5.1",
