@@ -4,6 +4,8 @@
 
 MediSync replaces paper tokens and hand-carried prescriptions. Patients book a token and watch their live queue position. Doctors write digital prescriptions that reach the compounder instantly. Compounders dispense against real inventory and point patients to nearby pharmacies when a medicine is out of stock. Patients leave with a PDF prescription and plain-language explanations backed by cited sources.
 
+**Live demo:** https://medisync-one-dun.vercel.app (one-click demo logins on the sign-in page)
+
 > This is a hackathon build. All data is synthetic, and the AI output is general information, not medical advice.
 
 ## The problem

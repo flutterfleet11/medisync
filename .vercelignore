@@ -1,0 +1,10 @@
+# Never upload local secrets — env vars are set in the Vercel project instead.
+.env*
+!.env.example
+node_modules
+.next
+supabase/.temp
+backend
+frontend
+tests
+tets document jsut for push.txt
